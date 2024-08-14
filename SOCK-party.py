@@ -4,10 +4,10 @@ def filter_true_lines(file_path):
     true_lines = []
     with open(file_path, 'r') as file:
         for line in file:
-            if 'TRUE' in line:
-                parts = line.split()
-                ip = parts[0]
-                domain_user = parts[1]
+            parts = line.split()
+            if len(parts) >= 4 and parts[3] == 'TRUE':
+                ip = parts[1]
+                domain_user = parts[2]
                 true_lines.append((ip, domain_user))
     return true_lines
 
