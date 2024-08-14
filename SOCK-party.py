@@ -12,11 +12,16 @@ def filter_true_lines(file_path):
     return true_lines
 
 def run_command(ip, domain_user, command, output_file):
-    domain, user = domain_user.split('/')
+    if '/' in domain_user:
+        domain, user = domain_user.split('/')
+    else:
+        domain = ''
+        user = domain_user
+
     netexec_command = f"proxychains4 netexec smb {ip} -d {domain} -u {user} -p '' --exec-method smbexec -x '{command}'"
     
     print(f"Running command against {ip}...")
-    
+
     result = subprocess.run(netexec_command, shell=True, capture_output=True, text=True)
     
     with open(output_file, 'a') as file:
