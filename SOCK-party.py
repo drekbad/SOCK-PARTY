@@ -178,16 +178,24 @@ def handle_action_selection(category, true_lines, cache_file, cache_actions, arg
 
             # Select systems to target
             target_ips = select_systems(available_ips)
-            if target_ips in {'q', 'quit', 'exit', 'back'}:
-                return
-
-            # Execute command for each selected IP
-            for entry in true_lines:
-                ip = entry[1]
-                domain_user = entry[2]
-                if ip in target_ips or target_ips == 'all':
-                    execute_command(ip, domain_user, action_name, args.output_file, args.grep)
-                    update_cache(cache_file, action_name, [ip])
+            if isinstance(target_ips, list):
+                # Execute command for each selected IP
+                for ip in target_ips:
+                    for entry in true_lines:
+                        if entry[1] == ip:
+                            domain_user = entry[2]
+                            execute_command(ip, domain_user, action_name, args.output_file, args.grep)
+                            update_cache(cache_file, action_name, [ip])
+            else:
+                # If target_ips is not a list, it's either 'all' or a control command
+                if target_ips == 'all':
+                    for entry in true_lines:
+                        ip = entry[1]
+                        domain_user = entry[2]
+                        execute_command(ip, domain_user, action_name, args.output_file, args.grep)
+                        update_cache(cache_file, action_name, [ip])
+                elif target_ips in {'q', 'quit', 'exit', 'back'}:
+                    return
 
             # Re-check cache and actions status
             cache_ips, cache_actions = parse_cache(cache_file)  # Re-read cache to ensure it's up to date
