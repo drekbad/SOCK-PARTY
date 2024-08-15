@@ -99,8 +99,8 @@ def execute_command(ip, domain_user, action_name, output_file, grep=None):
     print(f"\033[1m[ EXECUTING ] {command}\033[0m")
 
     try:
-        result = subprocess.run(command, shell=True, capture_output=True, text=True)
-        output = result.stdout
+        result = subprocess.run(command, shell=True, capture_output=True, text=True, env=os.environ)
+        output = result.stdout + result.stderr
 
         if grep:
             output = subprocess.run(f"echo \"{output}\" | grep {grep}", shell=True, capture_output=True, text=True).stdout
@@ -201,13 +201,18 @@ def handle_action_selection(category, true_lines, cache_file, cache_actions, arg
             if isinstance(target_ips, list):
                 # Execute command for the first selected IP
                 first_ip = target_ips[0]
+                first_admin_user = None
                 for entry in true_lines:
                     if entry[1] == first_ip and entry[3] == 'TRUE':
-                        domain_user = entry[2]
-                        execute_command(first_ip, domain_user, action_name, args.output_file, args.grep)
-                        update_cache(cache_file, action_name, [first_ip])
+                        first_admin_user = entry[2]
                         break
                 
+                if first_admin_user:
+                    execute_command(first_ip, first_admin_user, action_name, args.output_file, args.grep)
+                    update_cache(cache_file, action_name, [first_ip])
+                else:
+                    print(f"No known admin user found for {first_ip}. Skipping.")
+
                 # If more than one IP was provided, prompt to continue
                 if len(target_ips) > 1:
                     proceed = input("Do you want to continue with the remaining systems? (y/n): ").strip().lower()
@@ -216,12 +221,16 @@ def handle_action_selection(category, true_lines, cache_file, cache_actions, arg
                 
                 # Execute command for the remaining selected IPs
                 for ip in target_ips[1:]:
+                    admin_user = None
                     for entry in true_lines:
                         if entry[1] == ip and entry[3] == 'TRUE':
-                            domain_user = entry[2]
-                            execute_command(ip, domain_user, action_name, args.output_file, args.grep)
-                            update_cache(cache_file, action_name, [ip])
+                            admin_user = entry[2]
                             break
+                    if admin_user:
+                        execute_command(ip, admin_user, action_name, args.output_file, args.grep)
+                        update_cache(cache_file, action_name, [ip])
+                    else:
+                        print(f"No known admin user found for {ip}. Skipping.")
             else:
                 # If target_ips is not a list, it's either 'all' or a control command
                 if target_ips == 'all':
@@ -229,12 +238,17 @@ def handle_action_selection(category, true_lines, cache_file, cache_actions, arg
 
                     # Execute command for the first system
                     first_ip = remaining_ips.pop()
+                    first_admin_user = None
                     for entry in true_lines:
                         if entry[1] == first_ip and entry[3] == 'TRUE':
-                            domain_user = entry[2]
-                            execute_command(first_ip, domain_user, action_name, args.output_file, args.grep)
-                            update_cache(cache_file, action_name, [first_ip])
+                            first_admin_user = entry[2]
                             break
+                    
+                    if first_admin_user:
+                        execute_command(first_ip, first_admin_user, action_name, args.output_file, args.grep)
+                        update_cache(cache_file, action_name, [first_ip])
+                    else:
+                        print(f"No known admin user found for {first_ip}. Skipping.")
                     
                     # Prompt to continue with remaining systems
                     if remaining_ips:
@@ -244,12 +258,16 @@ def handle_action_selection(category, true_lines, cache_file, cache_actions, arg
                     
                     # Execute command for the remaining systems
                     for ip in remaining_ips:
+                        admin_user = None
                         for entry in true_lines:
                             if entry[1] == ip and entry[3] == 'TRUE':
-                                domain_user = entry[2]
-                                execute_command(ip, domain_user, action_name, args.output_file, args.grep)
-                                update_cache(cache_file, action_name, [ip])
+                                admin_user = entry[2]
                                 break
+                        if admin_user:
+                            execute_command(ip, admin_user, action_name, args.output_file, args.grep)
+                            update_cache(cache_file, action_name, [ip])
+                        else:
+                            print(f"No known admin user found for {ip}. Skipping.")
                 elif target_ips in {'q', 'quit', 'exit', 'back'}:
                     return
 
