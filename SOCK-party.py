@@ -93,9 +93,17 @@ def select_systems(available_ips):
             print("No valid IPs entered. Please try again.")
 
 # Function to handle the execution of commands
-def execute_command(ip, domain_user, action_name, output_file, grep=None):
+def execute_command(ip, domain_user, action_name, output_file, exec_method=None, grep=None):
     domain, user = domain_user.split('/')
-    command = f"proxychains4 -q nxc smb {ip} -d {domain} -u {user} -p '' --users"
+    base_command = f"proxychains4 -q nxc smb {ip} -d {domain} -u {user} -p ''"
+    if exec_method:
+        base_command += f" --exec-method {exec_method}"
+    
+    if action_name == "List local admins":
+        command = f"{base_command} -x 'net localgroup Administrators'"
+    else:
+        command = base_command
+
     print(f"\033[1m[ EXECUTING ] {command}\033[0m")
 
     try:
@@ -121,7 +129,7 @@ def display_menu(title, options, cache_actions, available_ips, back_option=True)
         action_name = option.split("[")[0].strip()  # Extract the action name
         if action_name in cache_actions:
             if len(cache_actions[action_name]) == len(available_ips):
-                option = f"\033[1;32m[ COMPLETE (ADM) ]\033[0m {option}"
+                option = f"\033[1;32m[ COMPLETE - ADM ]\033[0m {option}"
             else:
                 option = f"\033[1;33m[ PARTIAL ]\033[0m {option}"
         if "[ UNAVAILABLE ]" in option:
@@ -209,7 +217,7 @@ def handle_action_selection(category, true_lines, cache_file, cache_actions, arg
                         break
                 
                 if first_admin_user:
-                    execute_command(first_ip, first_admin_user, action_name, args.output_file, args.grep)
+                    execute_command(first_ip, first_admin_user, action_name, args.output_file, args.exec_method, args.grep)
                     update_cache(cache_file, action_name, [first_ip])
                 else:
                     print(f"No known admin user found for {first_ip}. Skipping.")
@@ -228,7 +236,7 @@ def handle_action_selection(category, true_lines, cache_file, cache_actions, arg
                             admin_user = entry[2]
                             break
                     if admin_user:
-                        execute_command(ip, admin_user, action_name, args.output_file, args.grep)
+                        execute_command(ip, admin_user, action_name, args.output_file, args.exec_method, args.grep)
                         update_cache(cache_file, action_name, [ip])
                     else:
                         print(f"No known admin user found for {ip}. Skipping.")
@@ -246,7 +254,7 @@ def handle_action_selection(category, true_lines, cache_file, cache_actions, arg
                             break
                     
                     if first_admin_user:
-                        execute_command(first_ip, first_admin_user, action_name, args.output_file, args.grep)
+                        execute_command(first_ip, first_admin_user, action_name, args.output_file, args.exec_method, args.grep)
                         update_cache(cache_file, action_name, [first_ip])
                     else:
                         print(f"No known admin user found for {first_ip}. Skipping.")
@@ -265,7 +273,7 @@ def handle_action_selection(category, true_lines, cache_file, cache_actions, arg
                                 admin_user = entry[2]
                                 break
                         if admin_user:
-                            execute_command(ip, admin_user, action_name, args.output_file, args.grep)
+                            execute_command(ip, admin_user, action_name, args.output_file, args.exec_method, args.grep)
                             update_cache(cache_file, action_name, [ip])
                         else:
                             print(f"No known admin user found for {ip}. Skipping.")
@@ -310,6 +318,7 @@ def main():
     parser.add_argument("--grep", help="Grep the output of commands.", default=None)
     parser.add_argument("--no-cache", action="store_true", help="Run without using the cache file.")
     parser.add_argument("--port", type=int, default=9090, help="Port for ntlmrelayx HTTPAPI (default: 9090).")
+    parser.add_argument("--exec_method", choices=["wmiexec", "smbexec", "mmcexec", "atexec"], help="Specify the exec-method to use.")
     parser.add_argument("--debug", action="store_true", help="Enable debug mode to print systems and users data.")
     
     args = parser.parse_args()
