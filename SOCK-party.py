@@ -9,8 +9,7 @@ def fetch_data_from_api(api_url):
     try:
         response = requests.get(api_url)
         response.raise_for_status()
-        data = response.json()
-        return data
+        return response.json()
     except requests.RequestException as e:
         print(f"Failed to fetch data from ntlmrelayx API: {e}")
         return []
@@ -31,21 +30,22 @@ def filter_true_lines(file_path):
     return true_lines
 
 # Function to display the unique systems and users count
-def display_unique_counts(true_lines, cache_ips):
+def display_unique_counts(true_lines, cache_ips, debug=False):
     unique_systems = set()
-    users = defaultdict(set)
+    unique_users = set()
 
     for entry in true_lines:
         ip = entry[1]
         domain_user = entry[2]
         unique_systems.add(ip)
-        users[ip].add(domain_user)
+        unique_users.add(domain_user)
 
-    print(f"Systems: {list(unique_systems)}")  # Debugging information
-    print(f"Users: {dict(users)}")  # Debugging information
+    if debug:
+        print(f"Systems: {list(unique_systems)}")  # Debugging information
+        print(f"Users: {list(unique_users)}")  # Debugging information
 
     print(f"\nNumber of unique \033[1;34msystems\033[0m: \033[1m{len(unique_systems)}\033[0m")
-    print(f"Number of unique \033[1;34musers\033[0m: \033[1m{sum(len(u) for u in users.values())}\033[0m")
+    print(f"Number of unique \033[1;34musers\033[0m: \033[1m{len(unique_users)}\033[0m")
 
     if cache_ips:
         print(f"\033[1mCache file exists. {len(cache_ips)} unique IPs found in the cache.\033[0m")
@@ -199,25 +199,6 @@ def handle_action_selection(category, true_lines, cache_file, cache_actions, arg
     else:
         print("Invalid selection. Please try again.")
 
-def display_unique_counts(true_lines, cache_ips):
-    unique_systems = set()
-    unique_users = set()
-
-    for entry in true_lines:
-        ip = entry[1]
-        domain_user = entry[2]
-        unique_systems.add(ip)
-        unique_users.add(domain_user)
-
-    print(f"Systems: {list(unique_systems)}")  # Debugging information
-    print(f"Users: {list(unique_users)}")  # Debugging information
-
-    print(f"\nNumber of unique \033[1;34msystems\033[0m: \033[1m{len(unique_systems)}\033[0m")
-    print(f"Number of unique \033[1;34musers\033[0m: \033[1m{len(unique_users)}\033[0m")
-
-    if cache_ips:
-        print(f"\033[1mCache file exists. {len(cache_ips)} unique IPs found in the cache.\033[0m")
-
 def main():
     parser = argparse.ArgumentParser(description="Process ntlmrelayx socks output.")
     parser.add_argument("--input_file", help="Path to the input text file (optional).")
@@ -225,6 +206,7 @@ def main():
     parser.add_argument("--grep", help="Grep the output of commands.", default=None)
     parser.add_argument("--no-cache", action="store_true", help="Run without using the cache file.")
     parser.add_argument("--port", type=int, default=9090, help="Port for ntlmrelayx HTTPAPI (default: 9090).")
+    parser.add_argument("--debug", action="store_true", help="Enable debug mode to print systems and users data.")
     
     args = parser.parse_args()
 
@@ -244,7 +226,7 @@ def main():
     cache_ips, cache_actions = parse_cache(cache_file) if not args.no_cache else (set(), {})
 
     # Display system and user information
-    display_unique_counts(true_lines, cache_ips)
+    display_unique_counts(true_lines, cache_ips, debug=args.debug)
 
     # Main menu
     while True:
