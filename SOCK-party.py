@@ -10,7 +10,6 @@ def fetch_data_from_api(api_url):
         response = requests.get(api_url)
         response.raise_for_status()
         data = response.json()
-        print(f"Data fetched from API: {data}")  # Debugging information
         return data
     except requests.RequestException as e:
         print(f"Failed to fetch data from ntlmrelayx API: {e}")
@@ -41,6 +40,9 @@ def display_unique_counts(true_lines, cache_ips):
         domain_user = entry[2]
         unique_systems.add(ip)
         users[ip].add(domain_user)
+
+    print(f"Systems: {list(unique_systems)}")  # Debugging information
+    print(f"Users: {dict(users)}")  # Debugging information
 
     print(f"\nNumber of unique \033[1;34msystems\033[0m: \033[1m{len(unique_systems)}\033[0m")
     print(f"Number of unique \033[1;34musers\033[0m: \033[1m{sum(len(u) for u in users.values())}\033[0m")
@@ -146,7 +148,6 @@ def handle_action_selection(category, true_lines, cache_file, cache_actions, arg
     }
     
     available_ips = set(entry[1] for entry in true_lines)
-    print(f"Available IPs: {available_ips}")  # Debugging information
     display_menu(category, options[category], cache_actions, available_ips)
 
     selection = input("> ").strip().lower()
@@ -210,7 +211,6 @@ def main():
 
     api_url = f"http://127.0.0.1:{args.port}/ntlmrelayx/api/v1.0/relays"
     true_lines = fetch_data_from_api(api_url)
-    print(f"True lines: {true_lines}")  # Debugging information
 
     if not true_lines and args.input_file:
         print(f"Failed to fetch data from the API. Falling back to input file: {args.input_file}")
