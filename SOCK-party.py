@@ -137,10 +137,10 @@ def execute_command(ip, domain_user, action_name, output_file, exec_method=None,
         print(f"Command failed: {e}")
 
     # Re-check cache and actions status immediately after execution
-    update_cache_status()
+    update_cache_status(cache_file)
 
 # Function to update cache status and re-check after action
-def update_cache_status():
+def update_cache_status(cache_file):
     cache_ips, cache_actions = parse_cache(cache_file)  # Re-read cache to ensure it's up to date
 
     completed = set(cache_actions.get(action_name, []))
@@ -306,7 +306,7 @@ def handle_action_selection(category, true_lines, cache_file, cache_actions, arg
                     return
 
             # Re-check cache and actions status
-            update_cache_status()
+            update_cache_status(cache_file)
 
             # Fresh pull from API to check for new systems/users
             fresh_data = fetch_data_from_api(f"http://127.0.0.1:{args.port}/ntlmrelayx/api/v1.0/relays")
