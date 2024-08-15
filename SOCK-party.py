@@ -9,7 +9,9 @@ def fetch_data_from_api(api_url):
     try:
         response = requests.get(api_url)
         response.raise_for_status()
-        return response.json()
+        data = response.json()
+        print(f"Data fetched from API: {data}")  # Debugging information
+        return data
     except requests.RequestException as e:
         print(f"Failed to fetch data from ntlmrelayx API: {e}")
         return []
@@ -144,6 +146,7 @@ def handle_action_selection(category, true_lines, cache_file, cache_actions, arg
     }
     
     available_ips = set(entry[1] for entry in true_lines)
+    print(f"Available IPs: {available_ips}")  # Debugging information
     display_menu(category, options[category], cache_actions, available_ips)
 
     selection = input("> ").strip().lower()
@@ -207,6 +210,7 @@ def main():
 
     api_url = f"http://127.0.0.1:{args.port}/ntlmrelayx/api/v1.0/relays"
     true_lines = fetch_data_from_api(api_url)
+    print(f"True lines: {true_lines}")  # Debugging information
 
     if not true_lines and args.input_file:
         print(f"Failed to fetch data from the API. Falling back to input file: {args.input_file}")
