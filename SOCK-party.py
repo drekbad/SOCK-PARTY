@@ -83,6 +83,8 @@ def display_menu(title, options, cache_actions, available_ips, back_option=True)
                 option = f"\033[1;32m[ COMPLETE ]\033[0m {option}"
             else:
                 option = f"\033[1;33m[ PARTIAL ]\033[0m {option}"
+        if "[ UNAVAILABLE ]" in option:
+            option = f"\033[1;31m{option}\033[0m"  # Bold red for unavailable actions
         print(f"{i}. {option}")
     if back_option:
         print("0. Back")
@@ -103,25 +105,25 @@ def handle_action_selection(category, true_lines, cache_file, cache_actions, arg
             "List \"C:\\\"",
             "List alternate drive",
             "Spider filesystem for pattern",
-            "[ UNAVAILABLE ] nxc GET",
-            "[ UNAVAILABLE ] nxc PUT",
-            "[ UNAVAILABLE ] nxc command (cmd.exe) - (WARNING: no shell or interactives, only execution or stdout)",
-            "[ UNAVAILABLE ] nxc command (PowerShell) - (WARNING: no shell or interactives, only execution or stdout)",
-            "[ UNAVAILABLE ] Disable Windows Defender",
-            "[ UNAVAILABLE ] Disable AppLocker",
-            "[ UNAVAILABLE ] AMSI Bypass"
+            "\033[1;31m[ UNAVAILABLE ] nxc GET\033[0m",
+            "\033[1;31m[ UNAVAILABLE ] nxc PUT\033[0m",
+            "\033[1;31m[ UNAVAILABLE ] nxc command (cmd.exe) - (WARNING: no shell or interactives, only execution or stdout)\033[0m",
+            "\033[1;31m[ UNAVAILABLE ] nxc command (PowerShell) - (WARNING: no shell or interactives, only execution or stdout)\033[0m",
+            "\033[1;31m[ UNAVAILABLE ] Disable Windows Defender\033[0m",
+            "\033[1;31m[ UNAVAILABLE ] Disable AppLocker\033[0m",
+            "\033[1;31m[ UNAVAILABLE ] AMSI Bypass\033[0m"
         ],
         "Credentials": [
             "Secretsdump",
-            "[ UNAVAILABLE ] nxc SAM",
-            "[ UNAVAILABLE ] nxc LSA",
-            "[ UNAVAILABLE ] nxc LSASS",
-            "[ UNAVAILABLE ] nxc nanodump"
+            "\033[1;31m[ UNAVAILABLE ] nxc SAM\033[0m",
+            "\033[1;31m[ UNAVAILABLE ] nxc LSA\033[0m",
+            "\033[1;31m[ UNAVAILABLE ] nxc LSASS\033[0m",
+            "\033[1;31m[ UNAVAILABLE ] nxc nanodump\033[0m"
         ],
         "Persistence": [
             ">> Create local admin <<",
-            "[ UNAVAILABLE ] Retrieve remote file (download)",
-            "[ UNAVAILABLE ] Send local file (upload)"
+            "\033[1;31m[ UNAVAILABLE ] Retrieve remote file (download)\033[0m",
+            "\033[1;31m[ UNAVAILABLE ] Send local file (upload)\033[0m"
         ]
     }
     
@@ -167,7 +169,7 @@ def handle_action_selection(category, true_lines, cache_file, cache_actions, arg
             
             # Update the cache indicators
             completed = set(cache_actions.get(action_name, []))
-            if len(completed) == len(available_ips):
+            if len(completed) + len(target_ips) == len(available_ips):
                 cache_actions[action_name] = available_ips  # Mark as complete
             else:
                 cache_actions[action_name].update(target_ips)
