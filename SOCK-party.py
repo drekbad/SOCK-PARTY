@@ -288,8 +288,16 @@ def handle_action_selection(category, true_lines, cache_file, cache_actions, arg
                 new_users = set(entry[2] for entry in new_true_lines)
                 new_admin_users = set(entry[2] for entry in new_true_lines if entry[3] == 'TRUE')
 
-                print(f"\033[1;34mNew systems detected: {len(new_systems)} (\033[1;33m{len(new_admin_systems)} with admin\033[0m)\033[0m")
-                print(f"\033[1;34mNew users detected: {len(new_users)} (\033[1;33m{len(new_admin_users)} with admin\033[0m)\033[0m")
+                # Compare with existing systems and users
+                existing_systems = set(entry[1] for entry in true_lines)
+                existing_users = set(entry[2] for entry in true_lines)
+
+                actual_new_systems = new_systems - existing_systems
+                actual_new_admin_systems = new_admin_systems - existing_systems
+                new_users_for_existing_systems = {entry[2] for entry in new_true_lines if entry[1] in existing_systems and entry[2] not in existing_users}
+
+                print(f"\033[1;34mNew systems detected\033[0m: \033[1m{len(actual_new_systems)}\033[0m (\033[1;33m{len(actual_new_admin_systems)} with admin\033[0m)")
+                print(f"\033[1;34mNew users detected\033[0m: \033[1m{len(new_users_for_existing_systems)}\033[0m (\033[1;33m{len(new_admin_users & new_users_for_existing_systems)} with admin\033[0m)")
                 true_lines.extend(new_true_lines)
     
     else:
@@ -335,8 +343,16 @@ def main():
             new_users = set(entry[2] for entry in new_true_lines)
             new_admin_users = set(entry[2] for entry in new_true_lines if entry[3] == 'TRUE')
 
-            print(f"\033[1;34mNew systems detected: {len(new_systems)} (\033[1;33m{len(new_admin_systems)} with admin\033[0m)\033[0m")
-            print(f"\033[1;34mNew users detected: {len(new_users)} (\033[1;33m{len(new_admin_users)} with admin\033[0m)\033[0m")
+            # Compare with existing systems and users
+            existing_systems = set(entry[1] for entry in true_lines)
+            existing_users = set(entry[2] for entry in true_lines)
+
+            actual_new_systems = new_systems - existing_systems
+            actual_new_admin_systems = new_admin_systems - existing_systems
+            new_users_for_existing_systems = {entry[2] for entry in new_true_lines if entry[1] in existing_systems and entry[2] not in existing_users}
+
+            print(f"\033[1;34mNew systems detected\033[0m: \033[1m{len(actual_new_systems)}\033[0m (\033[1;33m{len(actual_new_admin_systems)} with admin\033[0m)")
+            print(f"\033[1;34mNew users detected\033[0m: \033[1m{len(new_users_for_existing_systems)}\033[0m (\033[1;33m{len(new_admin_users & new_users_for_existing_systems)} with admin\033[0m)")
             true_lines.extend(new_true_lines)
 
         categories = ["Enumeration", "Execution", "Credentials", "Persistence"]
