@@ -34,7 +34,9 @@ def display_unique_counts(true_lines, cache_ips):
     unique_systems = set()
     users = defaultdict(set)
 
-    for ip, domain_user in true_lines:
+    for entry in true_lines:
+        ip = entry[1]
+        domain_user = entry[2]
         unique_systems.add(ip)
         users[ip].add(domain_user)
 
@@ -141,7 +143,7 @@ def handle_action_selection(category, true_lines, cache_file, cache_actions, arg
         ]
     }
     
-    available_ips = set(ip for ip, _ in true_lines)
+    available_ips = set(entry[1] for entry in true_lines)
     display_menu(category, options[category], cache_actions, available_ips)
 
     selection = input("> ").strip().lower()
@@ -176,7 +178,9 @@ def handle_action_selection(category, true_lines, cache_file, cache_actions, arg
                 return
 
             # Execute command for each selected IP
-            for ip, domain_user in true_lines:
+            for entry in true_lines:
+                ip = entry[1]
+                domain_user = entry[2]
                 if ip in target_ips or target_ips == 'all':
                     execute_command(ip, domain_user, action_name, args.output_file, args.grep)
                     update_cache(cache_file, action_name, [ip])
@@ -222,7 +226,7 @@ def main():
     # Main menu
     while True:
         categories = ["Enumeration", "Execution", "Credentials", "Persistence"]
-        display_menu("Main Menu", categories, cache_actions, set(ip for ip, _ in true_lines), back_option=False)
+        display_menu("Main Menu", categories, cache_actions, set(entry[1] for entry in true_lines), back_option=False)
 
         selection = input("> ").strip().lower()
         
@@ -237,7 +241,3 @@ def main():
                 print("Invalid selection. Please try again.")
         else:
             print("Invalid selection. Please try again.")
-
-if __name__ == "__main__":
-    main()
-
