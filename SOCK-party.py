@@ -99,7 +99,8 @@ def execute_command(ip, domain_user, action_name, output_file, grep=None):
     print(f"\033[1m[ EXECUTING ] {command}\033[0m")
 
     try:
-        result = subprocess.run(command, shell=True, capture_output=True, text=True, env=os.environ)
+        # Preserve color output by setting 'PYTHONIOENCODING' to 'utf-8' and using subprocess to pass the command
+        result = subprocess.run(command, shell=True, text=True, check=True, stdout=subprocess.PIPE, stderr=subprocess.PIPE)
         output = result.stdout + result.stderr
 
         if grep:
@@ -282,7 +283,13 @@ def handle_action_selection(category, true_lines, cache_file, cache_actions, arg
             fresh_data = fetch_data_from_api(f"http://127.0.0.1:{args.port}/ntlmrelayx/api/v1.0/relays")
             new_true_lines = [entry for entry in fresh_data if entry not in true_lines]
             if new_true_lines:
-                print(f"\033[1;34mNew systems/users detected: {len(new_true_lines)} added.\033[0m")
+                new_systems = set(entry[1] for entry in new_true_lines)
+                new_admin_systems = set(entry[1] for entry in new_true_lines if entry[3] == 'TRUE')
+                new_users = set(entry[2] for entry in new_true_lines)
+                new_admin_users = set(entry[2] for entry in new_true_lines if entry[3] == 'TRUE')
+
+                print(f"\033[1;34mNew systems detected: {len(new_systems)} (\033[1;33m{len(new_admin_systems)} with admin\033[0m)\033[0m")
+                print(f"\033[1;34mNew users detected: {len(new_users)} (\033[1;33m{len(new_admin_users)} with admin\033[0m)\033[0m")
                 true_lines.extend(new_true_lines)
     
     else:
@@ -323,7 +330,13 @@ def main():
         fresh_data = fetch_data_from_api(api_url)
         new_true_lines = [entry for entry in fresh_data if entry not in true_lines]
         if new_true_lines:
-            print(f"\033[1;34mNew systems/users detected: {len(new_true_lines)} added.\033[0m")
+            new_systems = set(entry[1] for entry in new_true_lines)
+            new_admin_systems = set(entry[1] for entry in new_true_lines if entry[3] == 'TRUE')
+            new_users = set(entry[2] for entry in new_true_lines)
+            new_admin_users = set(entry[2] for entry in new_true_lines if entry[3] == 'TRUE')
+
+            print(f"\033[1;34mNew systems detected: {len(new_systems)} (\033[1;33m{len(new_admin_systems)} with admin\033[0m)\033[0m")
+            print(f"\033[1;34mNew users detected: {len(new_users)} (\033[1;33m{len(new_admin_users)} with admin\033[0m)\033[0m")
             true_lines.extend(new_true_lines)
 
         categories = ["Enumeration", "Execution", "Credentials", "Persistence"]
