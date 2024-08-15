@@ -188,13 +188,20 @@ def handle_action_selection(category, true_lines, cache_file, cache_actions, arg
                 if ip in target_ips or target_ips == 'all':
                     execute_command(ip, domain_user, action_name, args.output_file, args.grep)
                     update_cache(cache_file, action_name, [ip])
-            
-            # Update the cache indicators
+
+            # Re-check cache and actions status
+            cache_ips, cache_actions = parse_cache(cache_file)  # Re-read cache to ensure it's up to date
+
             completed = set(cache_actions.get(action_name, []))
-            if len(completed) + len(target_ips) == len(available_ips):
+            if len(completed) == len(available_ips):
                 cache_actions[action_name] = available_ips  # Mark as complete
-            else:
-                cache_actions[action_name].update(target_ips)
+
+            # Fresh pull from API to check for new systems/users
+            fresh_data = fetch_data_from_api(f"http://127.0.0.1:{args.port}/ntlmrelayx/api/v1.0/relays")
+            new_true_lines = [entry for entry in fresh_data if entry not in true_lines]
+            if new_true_lines:
+                print(f"\033[1;34mNew systems/users detected: {len(new_true_lines)} added.\033[0m")
+                true_lines.extend(new_true_lines)
     
     else:
         print("Invalid selection. Please try again.")
@@ -230,6 +237,13 @@ def main():
 
     # Main menu
     while True:
+        # Fresh pull from API to check for new systems/users
+        fresh_data = fetch_data_from_api(api_url)
+        new_true_lines = [entry for entry in fresh_data if entry not in true_lines]
+        if new_true_lines:
+            print(f"\033[1;34mNew systems/users detected: {len(new_true_lines)} added.\033[0m")
+            true_lines.extend(new_true_lines)
+
         categories = ["Enumeration", "Execution", "Credentials", "Persistence"]
         display_menu("Main Menu", categories, cache_actions, set(entry[1] for entry in true_lines), back_option=False)
 
