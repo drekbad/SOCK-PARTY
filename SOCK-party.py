@@ -201,7 +201,7 @@ def handle_action_selection(category, true_lines, cache_file, cache_actions, arg
 def main():
     parser = argparse.ArgumentParser(description="Process ntlmrelayx socks output.")
     parser.add_argument("--input_file", help="Path to the input text file (optional).")
-    parser.add_argument("output_file", help="Path to the output file.")
+    parser.add_argument("--output_file", help="Path to the output file (optional). If not provided, output will be printed to screen.")
     parser.add_argument("--grep", help="Grep the output of commands.", default=None)
     parser.add_argument("--no-cache", action="store_true", help="Run without using the cache file.")
     parser.add_argument("--port", type=int, default=9090, help="Port for ntlmrelayx HTTPAPI (default: 9090).")
@@ -245,3 +245,6 @@ def main():
                 print("Invalid selection. Please try again.")
         else:
             print("Invalid selection. Please try again.")
+
+if __name__ == "__main__":
+    main()
