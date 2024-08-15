@@ -24,11 +24,11 @@ def display_unique_counts(true_lines, cache_ips):
         unique_systems.add(ip)
         users[ip].add(domain_user)
 
-    print(f"Number of unique systems: {len(unique_systems)}")
-    print(f"Number of unique users: {sum(len(u) for u in users.values())}")
+    print(f"\n\033[1mNumber of unique systems:\033[0m {len(unique_systems)}")
+    print(f"\033[1mNumber of unique users:\033[0m {sum(len(u) for u in users.values())}")
 
     if cache_ips:
-        print(f"Cache file exists. {len(cache_ips)} unique IPs found in the cache.")
+        print(f"\033[1mCache file exists. {len(cache_ips)} unique IPs found in the cache.\033[0m")
 
 # Function to parse the cache file
 def parse_cache(cache_file):
@@ -54,7 +54,7 @@ def update_cache(cache_file, action, ips):
 # Function to get the user input for selecting systems
 def select_systems(available_ips):
     while True:
-        target = input(f"Enter an IP, a comma/space/semicolon separated list of IPs, or 'all': ").strip()
+        target = input("Enter an IP(s) or target 'all': ").strip()
         if target.lower() == 'all':
             return list(available_ips)
         
@@ -71,22 +71,21 @@ def execute_command(ip, domain_user, command, output_file, grep=None):
     # Placeholder for command execution, needs to be updated with actual commands
     # The command should use subprocess to run
     # Add logic for grep if applicable
-    pass
+    print(f"\033[1m[ SIMULATION ] Running {command} on {ip} ({domain_user})...\033[0m")
 
 # Function to display the main menu
 def display_menu(title, options, back_option=True):
-    print(f"\n\033[1m\033[4m{title}\033[0m")
+    print(f"\n\033[1m{title}\033[0m")
     for i, option in enumerate(options, start=1):
         print(f"{i}. {option}")
     if back_option:
         print("0. Back")
-    print("q. Quit")
 
 # Function to handle the action selection and execution
-def handle_action_selection(category, true_lines, cache_file, cache_actions):
+def handle_action_selection(category, true_lines, cache_file, cache_actions, args):
     options = {
         "Enumeration": [
-            "\033[1m[ DIRECTORY ] Domain info\033[0m",
+            ">> Domain info <<",
             "List local users",
             "List local admins",
             "Logged on users",
@@ -114,7 +113,7 @@ def handle_action_selection(category, true_lines, cache_file, cache_actions):
             "[ UNAVAILABLE ] nxc nanodump"
         ],
         "Persistence": [
-            "\033[1m[ DIRECTORY ] Create local admin\033[0m",
+            ">> Create local admin <<",
             "[ UNAVAILABLE ] Retrieve remote file (download)",
             "[ UNAVAILABLE ] Send local file (upload)"
         ]
@@ -122,9 +121,9 @@ def handle_action_selection(category, true_lines, cache_file, cache_actions):
     
     display_menu(category, options[category])
 
-    selection = input("Select an action (or 'q' to quit): ").strip().lower()
+    selection = input("> ").strip().lower()
     
-    if selection == 'q':
+    if selection == 'q' or selection == 'quit' or selection == 'exit':
         sys.exit()
 
     if selection == '0':
@@ -140,9 +139,9 @@ def handle_action_selection(category, true_lines, cache_file, cache_actions):
                 return
             
             # Handle directory navigation (if applicable)
-            if "[ DIRECTORY ]" in action:
-                sub_category = action.replace("\033[1m[ DIRECTORY ]", "").strip()
-                handle_action_selection(sub_category, true_lines, cache_file, cache_actions)
+            if ">>" in action:
+                sub_category = action.replace(">>", "").strip()
+                handle_action_selection(sub_category, true_lines, cache_file, cache_actions, args)
                 return
             
             # Handle actual actions
@@ -192,15 +191,15 @@ def main():
         categories = ["Enumeration", "Execution", "Credentials", "Persistence"]
         display_menu("Main Menu", categories, back_option=False)
 
-        selection = input("Select a category (or 'q' to quit): ").strip().lower()
+        selection = input("> ").strip().lower()
         
-        if selection == 'q':
+        if selection == 'q' or selection == 'quit' or selection == 'exit':
             sys.exit()
         
         if selection.isdigit():
             selection = int(selection)
             if 0 < selection <= len(categories):
-                handle_action_selection(categories[selection - 1], true_lines, cache_file, cache_actions)
+                handle_action_selection(categories[selection - 1], true_lines, cache_file, cache_actions, args)
             else:
                 print("Invalid selection. Please try again.")
         else:
