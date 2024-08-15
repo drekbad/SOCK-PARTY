@@ -1,4 +1,5 @@
 import os
+import re
 import sys
 import argparse
 import requests
@@ -111,6 +112,21 @@ def select_systems(available_ips):
         else:
             print("No valid IPs entered. Please try again.")
 
+def color_text(text, color_code):
+    return f"\033[{color_code}m{text}\033[0m"
+
+def apply_coloring(output):
+    # Color [*] in blue
+    output = re.sub(r'\[\*\]', color_text('[*]', '34;1'), output)
+    # Color [+] in green
+    output = re.sub(r'\[\+\]', color_text('[+]', '32;1'), output)
+    # Color (Pwn3d!) in bold yellow
+    output = re.sub(r'\(Pwn3d!\)', color_text('(Pwn3d!)', '33;1'), output)
+    # Color "User accounts for \\" in bold yellow
+    output = re.sub(r'(User accounts for \\\\)', color_text(r'\1', '33;1'), output)
+
+    return output
+
 # Function to handle the execution of commands
 def execute_command(ip, domain_user, action_name, output_file, cache_file, available_ips, exec_method=None, grep=None, grep_before=0, grep_after=0):
     domain, user = domain_user.split('/')
@@ -141,6 +157,7 @@ def execute_command(ip, domain_user, action_name, output_file, cache_file, avail
         result = subprocess.run(command, shell=True, text=True, check=True, stdout=subprocess.PIPE, stderr=subprocess.PIPE)
         output = result.stdout + result.stderr
 
+        # Apply grep if specified
         if grep:
             grep_command = f"grep \"{grep}\""
             if grep_before > 0:
@@ -149,6 +166,9 @@ def execute_command(ip, domain_user, action_name, output_file, cache_file, avail
                 grep_command += f" -A {grep_after}"
             
             output = subprocess.run(f"echo \"{output}\" | {grep_command}", shell=True, capture_output=True, text=True).stdout
+
+        # Apply coloring
+        output = apply_coloring(output)
 
         if output_file:
             with open(output_file, 'a') as f:
