@@ -120,7 +120,7 @@ def display_menu(title, options, cache_actions, available_ips, back_option=True)
         action_name = option.split("[")[0].strip()  # Extract the action name
         if action_name in cache_actions:
             if len(cache_actions[action_name]) == len(available_ips):
-                option = f"\033[1;32m[ COMPLETE ]\033[0m {option}"
+                option = f"\033[1;32m[ COMPLETE (ADM) ]\033[0m {option}"
             else:
                 option = f"\033[1;33m[ PARTIAL ]\033[0m {option}"
         if "[ UNAVAILABLE ]" in option:
@@ -225,8 +225,10 @@ def handle_action_selection(category, true_lines, cache_file, cache_actions, arg
             else:
                 # If target_ips is not a list, it's either 'all' or a control command
                 if target_ips == 'all':
+                    remaining_ips = available_ips.copy()
+
                     # Execute command for the first system
-                    first_ip = list(available_ips)[0]
+                    first_ip = remaining_ips.pop()
                     for entry in true_lines:
                         if entry[1] == first_ip and entry[3] == 'TRUE':
                             domain_user = entry[2]
@@ -235,18 +237,19 @@ def handle_action_selection(category, true_lines, cache_file, cache_actions, arg
                             break
                     
                     # Prompt to continue with remaining systems
-                    proceed = input("Do you want to continue with the remaining systems? (y/n): ").strip().lower()
-                    if proceed == 'n':
-                        return
+                    if remaining_ips:
+                        proceed = input("Do you want to continue with the remaining systems? (y/n): ").strip().lower()
+                        if proceed == 'n':
+                            return
                     
                     # Execute command for the remaining systems
-                    for entry in true_lines:
-                        ip = entry[1]
-                        if entry[3] == 'TRUE':
-                            domain_user = entry[2]
-                            execute_command(ip, domain_user, action_name, args.output_file, args.grep)
-                            update_cache(cache_file, action_name, [ip])
-                            break
+                    for ip in remaining_ips:
+                        for entry in true_lines:
+                            if entry[1] == ip and entry[3] == 'TRUE':
+                                domain_user = entry[2]
+                                execute_command(ip, domain_user, action_name, args.output_file, args.grep)
+                                update_cache(cache_file, action_name, [ip])
+                                break
                 elif target_ips in {'q', 'quit', 'exit', 'back'}:
                     return
 
