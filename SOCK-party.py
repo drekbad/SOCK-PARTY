@@ -199,6 +199,25 @@ def handle_action_selection(category, true_lines, cache_file, cache_actions, arg
     else:
         print("Invalid selection. Please try again.")
 
+def display_unique_counts(true_lines, cache_ips):
+    unique_systems = set()
+    unique_users = set()
+
+    for entry in true_lines:
+        ip = entry[1]
+        domain_user = entry[2]
+        unique_systems.add(ip)
+        unique_users.add(domain_user)
+
+    print(f"Systems: {list(unique_systems)}")  # Debugging information
+    print(f"Users: {list(unique_users)}")  # Debugging information
+
+    print(f"\nNumber of unique \033[1;34msystems\033[0m: \033[1m{len(unique_systems)}\033[0m")
+    print(f"Number of unique \033[1;34musers\033[0m: \033[1m{len(unique_users)}\033[0m")
+
+    if cache_ips:
+        print(f"\033[1mCache file exists. {len(cache_ips)} unique IPs found in the cache.\033[0m")
+
 def main():
     parser = argparse.ArgumentParser(description="Process ntlmrelayx socks output.")
     parser.add_argument("--input_file", help="Path to the input text file (optional).")
