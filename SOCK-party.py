@@ -167,7 +167,7 @@ def handle_action_selection(category, true_lines, cache_file, cache_actions, arg
         ]
     }
     
-    available_ips = set(entry[1] for entry in true_lines)
+    available_ips = set(entry[1] for entry in true_lines if entry[3] == 'TRUE')
     display_menu(category, options[category], cache_actions, available_ips)
 
     selection = input("> ").strip().lower()
@@ -202,31 +202,33 @@ def handle_action_selection(category, true_lines, cache_file, cache_actions, arg
                 # Execute command for the first selected IP
                 first_ip = target_ips[0]
                 for entry in true_lines:
-                    if entry[1] == first_ip:
+                    if entry[1] == first_ip and entry[3] == 'TRUE':
                         domain_user = entry[2]
                         execute_command(first_ip, domain_user, action_name, args.output_file, args.grep)
                         update_cache(cache_file, action_name, [first_ip])
                         break
                 
-                # Prompt to continue with remaining systems
-                proceed = input("Do you want to continue with the remaining systems? (y/n): ").strip().lower()
-                if proceed == 'n':
-                    return
+                # If more than one IP was provided, prompt to continue
+                if len(target_ips) > 1:
+                    proceed = input("Do you want to continue with the remaining systems? (y/n): ").strip().lower()
+                    if proceed == 'n':
+                        return
                 
                 # Execute command for the remaining selected IPs
                 for ip in target_ips[1:]:
                     for entry in true_lines:
-                        if entry[1] == ip:
+                        if entry[1] == ip and entry[3] == 'TRUE':
                             domain_user = entry[2]
                             execute_command(ip, domain_user, action_name, args.output_file, args.grep)
                             update_cache(cache_file, action_name, [ip])
+                            break
             else:
                 # If target_ips is not a list, it's either 'all' or a control command
                 if target_ips == 'all':
                     # Execute command for the first system
                     first_ip = list(available_ips)[0]
                     for entry in true_lines:
-                        if entry[1] == first_ip:
+                        if entry[1] == first_ip and entry[3] == 'TRUE':
                             domain_user = entry[2]
                             execute_command(first_ip, domain_user, action_name, args.output_file, args.grep)
                             update_cache(cache_file, action_name, [first_ip])
@@ -240,9 +242,11 @@ def handle_action_selection(category, true_lines, cache_file, cache_actions, arg
                     # Execute command for the remaining systems
                     for entry in true_lines:
                         ip = entry[1]
-                        domain_user = entry[2]
-                        execute_command(ip, domain_user, action_name, args.output_file, args.grep)
-                        update_cache(cache_file, action_name, [ip])
+                        if entry[3] == 'TRUE':
+                            domain_user = entry[2]
+                            execute_command(ip, domain_user, action_name, args.output_file, args.grep)
+                            update_cache(cache_file, action_name, [ip])
+                            break
                 elif target_ips in {'q', 'quit', 'exit', 'back'}:
                     return
 
@@ -302,7 +306,7 @@ def main():
             true_lines.extend(new_true_lines)
 
         categories = ["Enumeration", "Execution", "Credentials", "Persistence"]
-        display_menu("Main Menu", categories, cache_actions, set(entry[1] for entry in true_lines), back_option=False)
+        display_menu("Main Menu", categories, cache_actions, set(entry[1] for entry in true_lines if entry[3] == 'TRUE'), back_option=False)
 
         selection = input("> ").strip().lower()
         
