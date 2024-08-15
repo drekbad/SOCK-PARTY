@@ -99,8 +99,22 @@ def execute_command(ip, domain_user, action_name, output_file, exec_method=None,
     if exec_method:
         base_command += f" --exec-method {exec_method}"
     
+    # Commands based on action name
     if action_name == "List local admins":
         command = f"{base_command} -x 'net localgroup Administrators'"
+    elif action_name == "Logged on users":
+        command = f"{base_command} --loggedon-users"
+    elif action_name == "List shares":
+        command = f"{base_command} --shares"
+    elif action_name == "Logical drives":
+        command = f"{base_command} --disks"
+        # Alternative command commented out for reference
+        # alternative_command = f"{base_command} -x 'wmic logicaldisk get caption'"
+    elif action_name == "List security events":
+        event_count = input("Default event count is 20. Press Enter to use the default or enter a number to change: ").strip()
+        if not event_count.isdigit():
+            event_count = "20"
+        command = f"{base_command} -X 'Get-WinEvent -LogName Security -MaxEvents {event_count} | Format-Table TimeCreated, Id, LevelDisplayName, Message -AutoSize'"
     else:
         command = base_command
 
@@ -121,6 +135,17 @@ def execute_command(ip, domain_user, action_name, output_file, exec_method=None,
             print(output)
     except subprocess.CalledProcessError as e:
         print(f"Command failed: {e}")
+
+    # Re-check cache and actions status immediately after execution
+    update_cache_status()
+
+# Function to update cache status and re-check after action
+def update_cache_status():
+    cache_ips, cache_actions = parse_cache(cache_file)  # Re-read cache to ensure it's up to date
+
+    completed = set(cache_actions.get(action_name, []))
+    if len(completed) == len(available_ips):
+        cache_actions[action_name] = available_ips  # Mark as complete
 
 # Function to display the main menu
 def display_menu(title, options, cache_actions, available_ips, back_option=True):
@@ -281,11 +306,7 @@ def handle_action_selection(category, true_lines, cache_file, cache_actions, arg
                     return
 
             # Re-check cache and actions status
-            cache_ips, cache_actions = parse_cache(cache_file)  # Re-read cache to ensure it's up to date
-
-            completed = set(cache_actions.get(action_name, []))
-            if len(completed) == len(available_ips):
-                cache_actions[action_name] = available_ips  # Mark as complete
+            update_cache_status()
 
             # Fresh pull from API to check for new systems/users
             fresh_data = fetch_data_from_api(f"http://127.0.0.1:{args.port}/ntlmrelayx/api/v1.0/relays")
