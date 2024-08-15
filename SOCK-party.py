@@ -1,18 +1,32 @@
 import os
 import sys
 import argparse
+import requests
 from collections import defaultdict
 
-# Function to filter the TRUE lines from the input file
+# Function to fetch data from the ntlmrelayx HTTPAPI
+def fetch_data_from_api(api_url):
+    try:
+        response = requests.get(api_url)
+        response.raise_for_status()
+        return response.json()
+    except requests.RequestException as e:
+        print(f"Failed to fetch data from ntlmrelayx API: {e}")
+        return []
+
+# Function to filter the TRUE lines from the input file (backup option)
 def filter_true_lines(file_path):
     true_lines = []
+    if not file_path or not os.path.exists(file_path):
+        return true_lines
+
     with open(file_path, 'r') as file:
         for line in file:
             parts = line.split()
             if len(parts) >= 4 and parts[3] == 'TRUE':
                 ip = parts[1]
                 domain_user = parts[2]
-                true_lines.append((ip, domain_user))
+                true_lines.append([ip, domain_user])
     return true_lines
 
 # Function to display the unique systems and users count
@@ -179,15 +193,24 @@ def handle_action_selection(category, true_lines, cache_file, cache_actions, arg
 
 def main():
     parser = argparse.ArgumentParser(description="Process ntlmrelayx socks output.")
-    parser.add_argument("input_file", help="Path to the input text file.")
+    parser.add_argument("--input_file", help="Path to the input text file (optional).")
     parser.add_argument("output_file", help="Path to the output file.")
     parser.add_argument("--grep", help="Grep the output of commands.", default=None)
     parser.add_argument("--no-cache", action="store_true", help="Run without using the cache file.")
+    parser.add_argument("--port", type=int, default=9090, help="Port for ntlmrelayx HTTPAPI (default: 9090).")
     
     args = parser.parse_args()
 
-    # Load and filter the input file
-    true_lines = filter_true_lines(args.input_file)
+    api_url = f"http://127.0.0.1:{args.port}/ntlmrelayx/api/v1.0/relays"
+    true_lines = fetch_data_from_api(api_url)
+
+    if not true_lines and args.input_file:
+        print(f"Failed to fetch data from the API. Falling back to input file: {args.input_file}")
+        true_lines = filter_true_lines(args.input_file)
+
+    if not true_lines:
+        print("No valid data available from the API or the input file.")
+        sys.exit(1)
 
     # Parse or initialize the cache
     cache_file = "cache.txt"
@@ -217,3 +240,4 @@ def main():
 
 if __name__ == "__main__":
     main()
+
