@@ -383,9 +383,9 @@ def main():
     parser.add_argument("--grep-after", "-A", type=int, help="Number of lines to show after the matching line (alias: -A).", default=0)
     
     parser.add_argument("--input_file", help="Path to the input text file (optional).")
-    parser.add.argument("--output_file", help="Path to the output file (optional). If not provided, output will be printed to screen.")
+    parser.add_argument("--output_file", help="Path to the output file (optional). If not provided, output will be printed to screen.")
     parser.add_argument("--no-cache", action="store_true", help="Run without using the cache file.")
-    parser.add.argument("--port", type=int, default=9090, help="Port for ntlmrelayx HTTPAPI (default: 9090).")
+    parser.add_argument("--port", type=int, default=9090, help="Port for ntlmrelayx HTTPAPI (default: 9090).")
     parser.add_argument("--exec_method", choices=["wmiexec", "smbexec", "mmcexec", "atexec"], help="Specify the exec-method to use.")
     parser.add_argument("--debug", action="store_true", help="Enable debug mode to print systems and users data.")
     
